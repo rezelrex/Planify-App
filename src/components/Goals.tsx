@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Target, Calendar, CheckCircle2, Circle, BarChart, Trophy, Clock, Tag, X } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, Circle, Star, Clock, Tag, MoreVertical, X, ArrowUpDown, BarChart, Trophy, Target } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
 
@@ -7,6 +7,22 @@ const GOALS_STORAGE_KEY = 'planify-goals';
 
 const generateUniqueId = () => {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+};
+
+const getProgressColor = (progress: number) => {
+  if (progress === 100) return 'bg-emerald-500';
+  if (progress >= 75) return 'bg-green-500';
+  if (progress >= 50) return 'bg-blue-500';
+  if (progress >= 25) return 'bg-yellow-500';
+  return 'bg-gray-300';
+};
+
+const getProgressBackground = (progress: number) => {
+  if (progress === 100) return 'bg-emerald-50';
+  if (progress >= 75) return 'bg-green-50';
+  if (progress >= 50) return 'bg-blue-50';
+  if (progress >= 25) return 'bg-yellow-50';
+  return 'bg-gray-100';
 };
 
 const Goals: React.FC = () => {
@@ -66,7 +82,6 @@ const Goals: React.FC = () => {
   const [showAnimation, setShowAnimation] = useState(false);
   const { updateGoals } = useApp();
 
-  // Calculate stats
   const calculateStats = useCallback(() => {
     const completedGoals = goals.filter(goal => goal.completed).length;
     const totalGoals = goals.length;
@@ -84,7 +99,6 @@ const Goals: React.FC = () => {
     };
   }, [goals]);
 
-  // Save goals to localStorage
   useEffect(() => {
     localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
     const stats = calculateStats();
@@ -172,7 +186,6 @@ const Goals: React.FC = () => {
     setGoals(prevGoals => prevGoals.filter(goal => goal.id !== id));
   };
 
-  // Sort goals by deadline and completion status
   const sortedGoals = goals.sort((a, b) => {
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
@@ -185,15 +198,13 @@ const Goals: React.FC = () => {
   const stats = calculateStats();
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
-      {/* Header */}
+    <div id="goals-overview" className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Goals</h1>
         <p className="text-base md:text-lg text-gray-600">Track your progress and achieve your dreams</p>
       </div>
 
-      {/* Progress Overview */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
+      <div id="goals-progress" className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
@@ -216,7 +227,6 @@ const Goals: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -235,8 +245,7 @@ const Goals: React.FC = () => {
         </div>
       </div>
 
-      {/* Goals List */}
-      <div className="space-y-4">
+      <div id="goals-categories" className="space-y-4">
         {sortedGoals.map(goal => (
           <div key={goal.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center justify-between mb-4">
@@ -274,7 +283,6 @@ const Goals: React.FC = () => {
                 </button>
               </div>
             </div>
-            {/* Progress Slider */}
             <div className="mt-2">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-sm text-gray-600">Progress</p>
@@ -293,20 +301,31 @@ const Goals: React.FC = () => {
                   <span className="text-sm font-medium text-gray-900">%</span>
                 </div>
               </div>
-              <input
-                type="range"
-                value={goal.progress}
-                onChange={(e) => updateProgress(goal.id, parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                min="0"
-                max="100"
-              />
+              
+              <div className="relative">
+                <input
+                  type="range"
+                  value={goal.progress}
+                  onChange={(e) => updateProgress(goal.id, parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  min="0"
+                  max="100"
+                  style={{
+                    background: `linear-gradient(to right, ${getProgressColor(goal.progress).replace('bg-', '')} ${goal.progress}%, #e5e7eb ${goal.progress}%)`
+                  }}
+                />
+                <div className={`absolute inset-0 pointer-events-none ${getProgressBackground(goal.progress)} rounded-lg`}>
+                  <div
+                    className={`h-full ${getProgressColor(goal.progress)} rounded-lg transition-all duration-300`}
+                    style={{ width: `${goal.progress}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Add Goal Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">

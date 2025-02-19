@@ -14,11 +14,15 @@ interface AppContextType {
   goalsInProgress: number;
   totalGoals: number;
   goalsPercentage: number;
+  expenses: any[];
+  timeRange: '7days' | '30days' | '3months';
   updateBudget: (budget: number) => void;
   updateBudgetSpent: (spent: number) => void;
   updateHabits: (completed: number, total: number) => void;
   updateTasks: (completed: number, total: number) => void;
   updateGoals: (inProgress: number, total: number) => void;
+  updateExpenses: (expenses: any[]) => void;
+  setTimeRange: (range: '7days' | '30days' | '3months') => void;
   initializeAppData: () => void;
 }
 
@@ -39,17 +43,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [habitsStats, setHabitsStats] = useState({ completed: 0, total: 0 });
   const [tasksStats, setTasksStats] = useState({ completed: 0, total: 0 });
   const [goalsStats, setGoalsStats] = useState({ inProgress: 0, total: 0 });
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState<'7days' | '30days' | '3months'>('7days');
+
+  const getCurrentMonthExpenses = useCallback((expensesList: any[]) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return expensesList.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === currentMonth && 
+             expenseDate.getFullYear() === currentYear;
+    });
+  }, []);
 
   const initializeAppData = useCallback(() => {
-    // Initialize Budget data
     const savedExpenses = localStorage.getItem(EXPENSES_STORAGE_KEY);
     if (savedExpenses) {
-      const expenses = JSON.parse(savedExpenses);
-      const totalSpent = expenses.reduce((sum: number, expense: any) => sum + expense.amount, 0);
+      const parsedExpenses = JSON.parse(savedExpenses);
+      setExpenses(parsedExpenses);
+      const currentMonthExpenses = getCurrentMonthExpenses(parsedExpenses);
+      const totalSpent = currentMonthExpenses.reduce((sum: number, expense: any) => sum + expense.amount, 0);
       setBudgetSpent(totalSpent);
     }
 
-    // Initialize Habits data
     const savedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
     if (savedHabits) {
       const habits = JSON.parse(savedHabits);
@@ -57,7 +75,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHabitsStats({ completed, total: habits.length });
     }
 
-    // Initialize Tasks data
     const savedTodos = localStorage.getItem(TODOS_STORAGE_KEY);
     if (savedTodos) {
       const todos = JSON.parse(savedTodos);
@@ -65,14 +82,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTasksStats({ completed, total: todos.length });
     }
 
-    // Initialize Goals data
     const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY);
     if (savedGoals) {
       const goals = JSON.parse(savedGoals);
       const inProgress = goals.filter((goal: any) => !goal.completed).length;
       setGoalsStats({ inProgress, total: goals.length });
     }
-  }, []);
+  }, [getCurrentMonthExpenses]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, monthlyBudget.toString());
@@ -98,6 +114,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGoalsStats({ inProgress, total });
   }, []);
 
+  const updateExpenses = useCallback((newExpenses: any[]) => {
+    setExpenses(newExpenses);
+    const currentMonthExpenses = getCurrentMonthExpenses(newExpenses);
+    const totalSpent = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    setBudgetSpent(totalSpent);
+  }, [getCurrentMonthExpenses]);
+
   const value = {
     monthlyBudget,
     budgetSpent,
@@ -112,11 +135,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     goalsInProgress: goalsStats.inProgress,
     totalGoals: goalsStats.total,
     goalsPercentage: Math.round((goalsStats.inProgress / goalsStats.total) * 100) || 0,
+    expenses,
+    timeRange,
     updateBudget,
     updateBudgetSpent,
     updateHabits,
     updateTasks,
     updateGoals,
+    updateExpenses,
+    setTimeRange,
     initializeAppData
   };
 

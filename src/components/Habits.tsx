@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trophy, Calendar, CheckCircle2, Circle, Sparkles, Dumbbell, Book, Coffee, Sunrise, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trophy, Calendar, CheckCircle2, Circle, Sparkles, Dumbbell, Book, Coffee, Sunrise, X, Utensils } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
 
@@ -9,23 +9,33 @@ const HABITS_STORAGE_KEY = 'planify-habits';
 const iconOptions = {
   Dumbbell: {
     icon: Dumbbell,
-    color: 'text-red-500'
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-50'
   },
   Book: {
     icon: Book,
-    color: 'text-blue-500'
+    color: 'text-indigo-500',
+    bgColor: 'bg-indigo-50'
   },
   Coffee: {
     icon: Coffee,
-    color: 'text-yellow-500'
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-50'
   },
   Sunrise: {
     icon: Sunrise,
-    color: 'text-orange-500'
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-50'
   },
   Sparkles: {
     icon: Sparkles,
-    color: 'text-purple-500'
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-50'
+  },
+  Utensils: {
+    icon: Utensils,
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-50'
   }
 };
 
@@ -41,11 +51,6 @@ const formatTime = (timeString: string) => {
     minute: '2-digit',
     hour12: true
   });
-};
-
-// Generate a unique ID
-const generateUniqueId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 };
 
 // Define weekDays with unique IDs
@@ -67,122 +72,91 @@ const Habits: React.FC = () => {
     icon: 'Dumbbell'
   });
   const [showAnimation, setShowAnimation] = useState(false);
-  const prevCompletionRef = useRef(false);
-  const lastResetDateRef = useRef(new Date().toDateString());
+  const prevCompletionRef = React.useRef(false);
+  const lastResetDateRef = React.useRef(new Date().toDateString());
 
   const [habits, setHabits] = useState(() => {
     const savedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
     if (savedHabits) {
-      const parsedHabits = JSON.parse(savedHabits);
-      return parsedHabits.map((habit: any) => ({
-        ...habit,
-        id: generateUniqueId(),
-        icon: iconOptions[habit.iconName as keyof typeof iconOptions].icon,
-        color: iconOptions[habit.iconName as keyof typeof iconOptions].color
-      }));
+      return JSON.parse(savedHabits);
     }
     return [
-      { 
-        id: generateUniqueId(),
-        name: 'Morning Workout',
-        iconName: 'Dumbbell',
-        icon: iconOptions.Dumbbell.icon,
-        color: iconOptions.Dumbbell.color,
-        streak: 12,
-        completed: false,
-        time: '06:00'
-      },
-      { 
-        id: generateUniqueId(),
-        name: 'Read 30 minutes',
-        iconName: 'Book',
-        icon: iconOptions.Book.icon,
-        color: iconOptions.Book.color,
-        streak: 8,
-        completed: false,
-        time: '20:00'
-      },
-      { 
-        id: generateUniqueId(),
-        name: 'Meditation',
-        iconName: 'Sparkles',
-        icon: iconOptions.Sparkles.icon,
-        color: iconOptions.Sparkles.color,
+      {
+        id: 1,
+        name: 'Morning Exercise',
+        icon: 'Dumbbell',
+        time: '06:00',
         streak: 5,
-        completed: false,
-        time: '07:00'
+        completed: false
       },
-      { 
-        id: generateUniqueId(),
-        name: 'No caffeine after 2 PM',
-        iconName: 'Coffee',
-        icon: iconOptions.Coffee.icon,
-        color: iconOptions.Coffee.color,
+      {
+        id: 2,
+        name: 'Read a Book',
+        icon: 'Book',
+        time: '20:00',
         streak: 3,
-        completed: false,
-        time: '14:00'
+        completed: false
       },
-      { 
-        id: generateUniqueId(),
-        name: 'Early wake up',
-        iconName: 'Sunrise',
-        icon: iconOptions.Sunrise.icon,
-        color: iconOptions.Sunrise.color,
-        streak: 15,
-        completed: false,
-        time: '05:30'
+      {
+        id: 3,
+        name: 'Meditate',
+        icon: 'Sparkles',
+        time: '07:00',
+        streak: 7,
+        completed: false
       }
     ];
   });
 
   const { updateHabits } = useApp();
 
-  // Save habits to localStorage whenever they change
-  useEffect(() => {
-    const habitsToSave = habits.map(habit => ({
-      ...habit,
-      icon: undefined,
-      iconName: Object.keys(iconOptions).find(
-        key => iconOptions[key as keyof typeof iconOptions].icon === habit.icon
-      )
-    }));
-    localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habitsToSave));
-  }, [habits]);
-
-  // Check for date change and reset habits
   useEffect(() => {
     const checkAndResetHabits = () => {
-      const currentDate = new Date().toDateString();
+      const now = new Date();
+      const currentDate = now.toDateString();
+      
       if (currentDate !== lastResetDateRef.current) {
+        console.log('New day detected, resetting habits');
+        
         setHabits(prevHabits =>
           prevHabits.map(habit => ({
             ...habit,
             completed: false
           }))
         );
+        
         lastResetDateRef.current = currentDate;
+        
+        localStorage.setItem('habits-last-reset', currentDate);
       }
     };
 
-    // Check immediately
-    checkAndResetHabits();
+    const storedLastReset = localStorage.getItem('habits-last-reset');
+    if (storedLastReset !== new Date().toDateString()) {
+      checkAndResetHabits();
+    }
 
-    // Check every minute for date changes
     const interval = setInterval(checkAndResetHabits, 60000);
 
-    return () => clearInterval(interval);
+    checkAndResetHabits();
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
-  // Calculate stats from habits
+  useEffect(() => {
+    localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
+  }, [habits]);
+
   const completedHabits = habits.filter(habit => habit.completed).length;
   const totalHabits = habits.length;
   const completionRate = Math.round((completedHabits / totalHabits) * 100) || 0;
-  const allHabitsCompleted = completedHabits === totalHabits;
+  const allHabitsCompleted = completedHabits === totalHabits && totalHabits > 0;
 
-  // Update app context whenever habits change
   useEffect(() => {
     updateHabits(completedHabits, totalHabits);
-  }, [habits]);
+  }, [habits, completedHabits, totalHabits, updateHabits]);
 
   useEffect(() => {
     const wasCompleted = prevCompletionRef.current;
@@ -206,17 +180,13 @@ const Habits: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const selectedIconConfig = iconOptions[newHabit.icon as keyof typeof iconOptions];
-    
     const newHabitEntry = {
-      id: generateUniqueId(),
+      id: Date.now(),
       name: newHabit.name,
-      iconName: newHabit.icon,
-      icon: selectedIconConfig.icon,
-      color: selectedIconConfig.color,
+      icon: newHabit.icon,
+      time: newHabit.time,
       streak: 0,
-      completed: false,
-      time: newHabit.time
+      completed: false
     };
 
     setHabits(prev => [...prev, newHabitEntry]);
@@ -228,15 +198,15 @@ const Habits: React.FC = () => {
     });
   };
 
-  const toggleHabit = (id: string | number) => {
-    setHabits(prevHabits => 
+  const toggleHabit = (id: number) => {
+    setHabits(prevHabits =>
       prevHabits.map(habit => {
         if (habit.id === id) {
-          const streakChange = !habit.completed ? 1 : -1;
+          const newCompleted = !habit.completed;
           return {
             ...habit,
-            completed: !habit.completed,
-            streak: Math.max(0, habit.streak + streakChange)
+            completed: newCompleted,
+            streak: newCompleted ? habit.streak + 1 : Math.max(0, habit.streak - 1)
           };
         }
         return habit;
@@ -244,11 +214,10 @@ const Habits: React.FC = () => {
     );
   };
 
-  const deleteHabit = (id: string | number) => {
+  const deleteHabit = (id: number) => {
     setHabits(prevHabits => prevHabits.filter(habit => habit.id !== id));
   };
 
-  // Sort habits by time
   const sortedHabits = [...habits].sort((a, b) => {
     const timeA = new Date(`1970-01-01T${a.time}`);
     const timeB = new Date(`1970-01-01T${b.time}`);
@@ -256,13 +225,13 @@ const Habits: React.FC = () => {
   });
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
+    <div id="habits-overview" className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Daily Habits</h1>
         <p className="text-gray-600">Build better habits, one day at a time</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+      <div id="habits-progress" className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
@@ -287,7 +256,6 @@ const Habits: React.FC = () => {
           </div>
         </div>
 
-        {/* Week Progress */}
         <div className="grid grid-cols-7 gap-2 mb-4">
           {weekDays.map((day, index) => (
             <div 
@@ -303,54 +271,60 @@ const Habits: React.FC = () => {
         </div>
       </div>
 
-      {/* Habits List */}
-      <div className="space-y-4">
-        {sortedHabits.map(habit => (
-          <div key={habit.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => toggleHabit(habit.id)}
-                  className={`p-2 rounded-xl ${habit.completed ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
-                >
-                  {habit.completed ? (
-                    <CheckCircle2 className="h-6 w-6 text-blue-500" />
-                  ) : (
-                    <Circle className="h-6 w-6 text-gray-400" />
-                  )}
-                </button>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <habit.icon className={`h-5 w-5 ${habit.color}`} />
-                    <h3 className="font-medium text-gray-900">{habit.name}</h3>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <p className="text-sm text-gray-500">{formatTime(habit.time)}</p>
+      <div id="habits-streaks" className="space-y-4">
+        {sortedHabits.map(habit => {
+          const IconComponent = iconOptions[habit.icon as keyof typeof iconOptions]?.icon || Sparkles;
+          const iconColor = iconOptions[habit.icon as keyof typeof iconOptions]?.color || 'text-violet-500';
+          const iconBgColor = iconOptions[habit.icon as keyof typeof iconOptions]?.bgColor || 'bg-violet-50';
+
+          return (
+            <div key={habit.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => toggleHabit(habit.id)}
+                    className={`p-2 rounded-xl ${habit.completed ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
+                  >
+                    {habit.completed ? (
+                      <CheckCircle2 className="h-6 w-6 text-blue-500" />
+                    ) : (
+                      <Circle className="h-6 w-6 text-gray-400" />
+                    )}
+                  </button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg ${iconBgColor}`}>
+                        <IconComponent className={iconColor} />
+                      </div>
+                      <h3 className="font-medium text-gray-900">{habit.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <p className="text-sm text-gray-500">{formatTime(habit.time)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="flex items-center gap-1">
-                    <Trophy className="h-4 w-4 text-yellow-500" />
-                    <p className="text-sm font-medium text-gray-900">{habit.streak} days</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="flex items-center gap-1">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <p className="text-sm font-medium text-gray-900">{habit.streak} days</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Current streak</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Current streak</p>
+                  <button 
+                    onClick={() => deleteHabit(habit.id)}
+                    className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                  >
+                    <X className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => deleteHabit(habit.id)}
-                  className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                >
-                  <X className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
-                </button>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Add Habit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
@@ -406,6 +380,7 @@ const Habits: React.FC = () => {
                   <option value="Coffee">Caffeine</option>
                   <option value="Sunrise">Morning</option>
                   <option value="Sparkles">Meditation</option>
+                  <option value="Utensils">Healthy Eating</option>
                 </select>
               </div>
               <button
@@ -420,6 +395,6 @@ const Habits: React.FC = () => {
       )}
     </div>
   );
-}
+};
 
 export default Habits;

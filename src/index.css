@@ -1,3 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+/* Driver.js custom styles */
+.driver-popover {
+  @apply rounded-xl border border-gray-200 shadow-lg !important;
+}
+
+.driver-popover-title {
+  @apply text-lg font-semibold text-gray-900 !important;
+}
+
+.driver-popover-description {
+  @apply text-sm text-gray-600 !important;
+}
+
+.driver-popover-footer {
+  @apply border-t border-gray-200 !important;
+}
+
+.driver-popover-progress-text {
+  @apply text-sm text-gray-500 !important;
+}
+
+/* Hide the previous button */
+.driver-popover-prev-btn {
+  @apply hidden !important;
+}
+
+.driver-popover-next-btn {
+  @apply px-3 py-1.5 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 !important;
+}
+
+.driver-popover-close-btn {
+  @apply text-gray-400 hover:text-gray-600 !important;
+}

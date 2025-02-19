@@ -254,7 +254,7 @@ const Todos: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4" id="sort-buttons">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => toggleSort('priority')}
@@ -301,7 +301,7 @@ const Todos: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4" id="todos-list">
         {sortedTodos.map(todo => (
           <div key={todo.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center justify-between">

@@ -1,18 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, TrendingDown, PieChart, ArrowDownCircle, ArrowUpCircle, Coffee, ShoppingBag, Home, Car, X, Settings, MoreHorizontal, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  Plus, 
+  TrendingDown, 
+  PieChart, 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
+  Coffee, 
+  ShoppingBag, 
+  Home as HomeIcon, 
+  Car, 
+  X, 
+  Settings, 
+  MoreHorizontal, 
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  DollarSign
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const EXPENSES_STORAGE_KEY = 'planify-expenses';
 const INITIAL_DISPLAY_COUNT = 4;
 
-// Define categories before using them in state
+// Define categories with their icons
 const categories = [
-  { name: 'Housing', color: 'bg-purple-500', textColor: 'text-purple-500', icon: Home },
-  { name: 'Food', color: 'bg-blue-500', textColor: 'text-blue-500', icon: Coffee },
-  { name: 'Transportation', color: 'bg-green-500', textColor: 'text-green-500', icon: Car },
-  { name: 'Shopping', color: 'bg-red-500', textColor: 'text-red-500', icon: ShoppingBag },
-  { name: 'Other', color: 'bg-gray-500', textColor: 'text-gray-500', icon: MoreHorizontal }
+  { name: 'Housing', icon: HomeIcon, color: 'bg-purple-500', textColor: 'text-purple-500' },
+  { name: 'Food', icon: Coffee, color: 'bg-blue-500', textColor: 'text-blue-500' },
+  { name: 'Transportation', icon: Car, color: 'bg-green-500', textColor: 'text-green-500' },
+  { name: 'Shopping', icon: ShoppingBag, color: 'bg-red-500', textColor: 'text-red-500' },
+  { name: 'Other', icon: MoreHorizontal, color: 'bg-gray-500', textColor: 'text-gray-500' }
 ];
+
+const formatRelativeDate = (date: string) => {
+  const now = new Date();
+  const expenseDate = new Date(date);
+  const diffInHours = Math.floor((now.getTime() - expenseDate.getTime()) / (1000 * 60 * 60));
+  
+  if (diffInHours < 24) {
+    return `${diffInHours}h ago`;
+  } else {
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  }
+};
 
 const Budget: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,7 +53,6 @@ const Budget: React.FC = () => {
     const savedBudget = localStorage.getItem('planify-monthly-budget');
     return savedBudget ? parseFloat(savedBudget) : 3500;
   });
-  const [spent, setSpent] = useState(0);
   const [newMonthlyBudget, setNewMonthlyBudget] = useState(monthlyBudget.toString());
   const [newExpense, setNewExpense] = useState({
     category: 'Housing',
@@ -31,30 +60,18 @@ const Budget: React.FC = () => {
     date: new Date().toISOString().split('T')[0]
   });
 
-  const { updateBudget, updateBudgetSpent } = useApp();
+  const { updateBudget, updateBudgetSpent, expenses, updateExpenses } = useApp();
 
   const [recentExpenses, setRecentExpenses] = useState(() => {
-    const savedExpenses = localStorage.getItem(EXPENSES_STORAGE_KEY);
-    if (savedExpenses) {
-      const parsedExpenses = JSON.parse(savedExpenses);
-      return parsedExpenses.map((expense: any) => {
-        const category = categories.find(cat => cat.name === expense.category);
-        return {
-          ...expense,
-          icon: category?.icon || MoreHorizontal,
-          color: category?.textColor || 'text-gray-500'
-        };
-      });
-    }
+    if (expenses.length > 0) return expenses;
     return [
-      { id: 1, category: 'Housing', icon: Home, amount: 800, date: '2d ago', color: 'text-purple-500' },
-      { id: 2, category: 'Food', icon: Coffee, amount: 85.20, date: '5h ago', color: 'text-blue-500' },
-      { id: 3, category: 'Transportation', icon: Car, amount: 45.80, date: '3d ago', color: 'text-green-500' },
-      { id: 4, category: 'Shopping', icon: ShoppingBag, amount: 120, date: '2h ago', color: 'text-red-500' }
+      { id: 1, category: 'Housing', amount: 800, date: '2024-01-15', color: 'text-purple-500' },
+      { id: 2, category: 'Food', amount: 85.20, date: '2024-01-20', color: 'text-blue-500' },
+      { id: 3, category: 'Transportation', amount: 45.80, date: '2024-01-18', color: 'text-green-500' },
+      { id: 4, category: 'Shopping', amount: 120, date: '2024-01-21', color: 'text-red-500' }
     ];
   });
 
-  // Save expenses to localStorage whenever they change
   useEffect(() => {
     const expensesToSave = recentExpenses.map(expense => ({
       id: expense.id,
@@ -64,15 +81,31 @@ const Budget: React.FC = () => {
       color: expense.color
     }));
     localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expensesToSave));
-  }, [recentExpenses]);
+    updateExpenses(expensesToSave);
+  }, [recentExpenses, updateExpenses]);
 
-  // Calculate category spending
+  // Calculate current month's expenses
+  const getCurrentMonthExpenses = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return recentExpenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === currentMonth && 
+             expenseDate.getFullYear() === currentYear;
+    });
+  };
+
+  // Calculate category spending for current month only
   const categorySpending = categories.map(category => {
-    const totalSpent = recentExpenses
+    const currentMonthExpenses = getCurrentMonthExpenses();
+    const totalSpent = currentMonthExpenses
       .filter(expense => expense.category === category.name)
       .reduce((sum, expense) => sum + expense.amount, 0);
     
-    const percentage = Math.round((totalSpent / spent) * 100) || 0;
+    const currentMonthTotal = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const percentage = Math.round((totalSpent / currentMonthTotal) * 100) || 0;
     
     return {
       ...category,
@@ -82,13 +115,10 @@ const Budget: React.FC = () => {
   });
 
   useEffect(() => {
-    const totalSpent = recentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    setSpent(totalSpent);
-  }, [recentExpenses]);
-
-  useEffect(() => {
-    updateBudgetSpent(spent);
-  }, [spent, updateBudgetSpent]);
+    const currentMonthExpenses = getCurrentMonthExpenses();
+    const totalSpent = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    updateBudgetSpent(totalSpent);
+  }, [recentExpenses, updateBudgetSpent]);
 
   useEffect(() => {
     updateBudget(monthlyBudget);
@@ -98,27 +128,32 @@ const Budget: React.FC = () => {
     localStorage.setItem('planify-monthly-budget', monthlyBudget.toString());
   }, [monthlyBudget]);
 
-  const remaining = monthlyBudget - spent;
-  const percentageSpent = Math.round((spent / monthlyBudget) * 100);
+  const remaining = monthlyBudget - recentExpenses.reduce((sum, expense) => {
+    const expenseDate = new Date(expense.date);
+    const now = new Date();
+    return expenseDate.getMonth() === now.getMonth() && 
+           expenseDate.getFullYear() === now.getFullYear() 
+           ? sum + expense.amount 
+           : sum;
+  }, 0);
+
+  const percentageSpent = Math.round(((monthlyBudget - remaining) / monthlyBudget) * 100);
   const percentageRemaining = 100 - percentageSpent;
+
+  const getBudgetStatus = () => {
+    if (percentageRemaining > 70) {
+      return { text: 'Good', color: 'text-green-500' };
+    } else if (percentageRemaining >= 40) {
+      return { text: 'Careful', color: 'text-yellow-500' };
+    } else {
+      return { text: 'Danger', color: 'text-red-500' };
+    }
+  };
 
   const getProgressBarColor = (percentage: number) => {
     if (percentage >= 70) return 'bg-red-500';
     if (percentage >= 40) return 'bg-orange-500';
     return 'bg-green-500';
-  };
-
-  const formatRelativeDate = (date: string) => {
-    const now = new Date();
-    const expenseDate = new Date(date);
-    const diffInHours = Math.floor((now.getTime() - expenseDate.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays}d ago`;
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -132,15 +167,12 @@ const Budget: React.FC = () => {
     const newExpenseEntry = {
       id: Date.now(),
       category: newExpense.category,
-      icon: category.icon,
       amount: amount,
-      date: formatRelativeDate(newExpense.date),
+      date: newExpense.date,
       color: category.textColor
     };
 
-    // Add the new expense to the beginning of the array without removing any
     setRecentExpenses(prev => [newExpenseEntry, ...prev]);
-    
     setIsModalOpen(false);
     setNewExpense({
       category: 'Housing',
@@ -158,14 +190,31 @@ const Budget: React.FC = () => {
     setIsSettingsModalOpen(false);
   };
 
-  const handleResetSpending = () => {
-    setRecentExpenses([]);
-    setSpent(0);
+  const handleResetMonthlySpending = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    // Filter out expenses from current month only
+    const filteredExpenses = recentExpenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() !== currentMonth || 
+             expenseDate.getFullYear() !== currentYear;
+    });
+
+    setRecentExpenses(filteredExpenses);
+    updateBudgetSpent(0);
     setIsResetConfirmOpen(false);
     setIsSettingsModalOpen(false);
   };
 
-  // Get expenses to display based on show all toggle
+  const handleResetAllSpending = () => {
+    setRecentExpenses([]);
+    updateBudgetSpent(0);
+    setIsResetConfirmOpen(false);
+    setIsSettingsModalOpen(false);
+  };
+
   const displayedExpenses = showAllExpenses ? recentExpenses : recentExpenses.slice(0, INITIAL_DISPLAY_COUNT);
 
   const toggleShowExpenses = () => {
@@ -173,7 +222,7 @@ const Budget: React.FC = () => {
   };
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
+    <div id="budget-overview" className="max-w-screen-xl mx-auto px-4 py-6 pb-24">
       {/* Budget Overview */}
       <div className="mb-8 flex justify-between items-start">
         <div>
@@ -189,7 +238,7 @@ const Budget: React.FC = () => {
       </div>
 
       {/* Main Budget Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
+      <div id="budget-progress" className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center justify-between w-full">
             <div>
@@ -233,7 +282,7 @@ const Budget: React.FC = () => {
             <ArrowDownCircle className="h-5 w-5 text-red-500" />
             <div>
               <p className="text-sm text-gray-600">Spent</p>
-              <p className="font-semibold text-gray-900">${spent.toLocaleString()}</p>
+              <p className="font-semibold text-gray-900">${(monthlyBudget - remaining).toLocaleString()}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -247,37 +296,40 @@ const Budget: React.FC = () => {
       </div>
 
       {/* Spending Categories */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
+      <div id="spending-categories" className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-8">
         <div className="flex items-center gap-2 mb-6">
           <PieChart className="h-5 w-5 text-gray-700" />
           <h2 className="text-lg font-semibold text-gray-900">Spending Categories</h2>
         </div>
         <div className="space-y-4">
-          {categorySpending.map((category) => (
-            <div key={category.name} className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <category.icon className={category.textColor} />
-                  <span className="text-gray-600">{category.name}</span>
+          {categorySpending.map((category) => {
+            const CategoryIcon = category.icon;
+            return (
+              <div key={category.name} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon className={category.textColor} />
+                    <span className="text-gray-600">{category.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-medium text-gray-900">{category.percentage}%</span>
+                    <p className="text-xs text-gray-500">${category.spent.toLocaleString()}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-medium text-gray-900">{category.percentage}%</span>
-                  <p className="text-xs text-gray-500">${category.spent.toLocaleString()}</p>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${category.color} rounded-full transition-all duration-300`}
+                    style={{ width: `${category.percentage}%` }}
+                  ></div>
                 </div>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full ${category.color} rounded-full transition-all duration-300`}
-                  style={{ width: `${category.percentage}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Recent Expenses */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
+      <div id="recent-expenses" className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <TrendingDown className="h-5 w-5 text-gray-700" />
@@ -304,7 +356,7 @@ const Budget: React.FC = () => {
         </div>
         <div className="space-y-4">
           {displayedExpenses.map((expense) => {
-            const ExpenseIcon = expense.icon;
+            const ExpenseIcon = categories.find(cat => cat.name === expense.category)?.icon || MoreHorizontal;
             return (
               <div key={expense.id} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
@@ -313,7 +365,7 @@ const Budget: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{expense.category}</p>
-                    <p className="text-sm text-gray-500">{expense.date}</p>
+                    <p className="text-sm text-gray-500">{formatRelativeDate(expense.date)}</p>
                   </div>
                 </div>
                 <p className="font-semibold text-gray-900">
@@ -451,26 +503,43 @@ const Budget: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Reset Monthly Spending</h2>
-              <p className="text-gray-600">
-                Are you sure you want to reset your monthly spending? This will remove all expenses for the current month.
-                This action cannot be undone.
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Reset Spending</h2>
+              <p className="text-gray-600 mb-4">
+                Choose how you would like to reset your spending:
               </p>
+              <div className="space-y-4">
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-1">Reset Current Month</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    This will remove all expenses for the current month only. Previous months' data will be preserved.
+                  </p>
+                  <button
+                    onClick={handleResetMonthlySpending}
+                    className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                  >
+                    Reset Current Month
+                  </button>
+                </div>
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-1">Reset All Spending</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    This will remove ALL expenses across all months. This action cannot be undone.
+                  </p>
+                  <button
+                    onClick={handleResetAllSpending}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Reset All Spending
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsResetConfirmOpen(false)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleResetSpending}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Reset Spending
-              </button>
-            </div>
+            <button
+              onClick={() => setIsResetConfirmOpen(false)}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
