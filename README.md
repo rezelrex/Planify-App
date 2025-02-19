@@ -1,3 +1,3 @@
 # Planify-App
 
-https://azfarplanifyapp.netlify.app/
+https://azfar-planify.netlify.app/
